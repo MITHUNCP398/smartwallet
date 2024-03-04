@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Wallet</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+         body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        #container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+        }
+
+        input[type="text"], input[type="password"], button {
+            display: block;
+            margin: 10px auto;
+            padding: 8px;
+            width: 80%;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4caf50;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #wallet {
+            display: none;
+        }
+
+        #details {
+            margin-top: 10px;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+
+        #details p {
+            margin: 5px 0;
+        }
+
+        canvas {
+            margin: 10px auto;
+            display: block;
+        }
+
+        button.logout {
+            background-color: #f44336;
+        }
+
+        button.logout:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Smart Wallet</h1>
+        <div id="loginForm">
+            <h2>Login</h2>
+            Username: <input type="text" id="loginUsername"><br>
+            Password: <input type="password" id="loginPassword"><br>
+            <button onclick="login()">Login</button>
+            <button onclick="toggleRegistrationForm()">Register</button>
+        </div>
+        <div id="registrationForm" style="display: none;">
+            <h2>Register</h2>
+            Username: <input type="text" id="registerUsername"><br>
+            Password: <input type="password" id="registerPassword"><br>
+            <button onclick="register()">Register</button>
+            <button onclick="toggleLoginForm()">Back to Login</button>
+        </div>
+        <div id="wallet" style="display: none;">
+            <h2>Welcome, <span id="loggedInUser"></span>!</h2>
+            <p>Total Balance: $<span id="balance">0.00</span></p>
+            <p>Total Income: $<span id="totalIncome">0.00</span></p>
+            <p>Total Expenses: $<span id="totalExpense">0.00</span></p>
+            <h3>Income/Expense Details</h3>
+            <div id="details"></div>
+            <h3>Expense Pie Chart</h3>
+            <canvas id="expenseChart" width="400" height="400"></canvas>
+            <br>
+            <button onclick="addIncome()">Add Income</button>
+            <button onclick="addExpense()">Add Expense</button>
+            <button onclick="clearData()">Clear Data</button>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        let users = [];
+        let currentUser = null;
+        let walletData = {
+            balance: 0,
+            totalIncome: 0,
+            totalExpense: 0,
+            transactions: []
+        };
+
+        function login() {
+            let username = document.getElementById('loginUsername').value;
+            let password = document.getElementById('loginPassword').value;
+            let user = users.find(u => u.username === username && u.password === password);
+            if (user) {
+                currentUser = user;
+                document.getElementById('loggedInUser').textContent = currentUser.username;
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('wallet').style.display = 'block';
+                updateWalletDisplay();
+            } else {
+                alert('Invalid username or password');
+            }
+        }
+
+        function register() {
+            let username = document.getElementById('registerUsername').value;
+            let password = document.getElementById('registerPassword').value;
+            if (username && password) {
+                if (users.some(u => u.username === username)) {
+                    alert('Username already exists. Please choose a different one.');
+                } else {
+                    users.push({ username, password });
+                    alert('Registration successful! Please login.');
+                    toggleLoginForm();
+                }
+            } else {
+                alert('Please enter username and password.');
+            }
+        }
+
+        function toggleLoginForm() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registrationForm').style.display = 'none';
+        }
+
+        function toggleRegistrationForm() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registrationForm').style.display = 'block';
+        }
+
+        function updateWalletDisplay() {
+            document.getElementById('balance').textContent = walletData.balance.toFixed(2);
+            document.getElementById('totalIncome').textContent = walletData.totalIncome.toFixed(2);
+            document.getElementById('totalExpense').textContent = walletData.totalExpense.toFixed(2);
+            updateDetails();
+            updateChart();
+        }
+
+        function updateDetails() {
+            let detailsDiv = document.getElementById('details');
+            detailsDiv.innerHTML = '';
+            walletData.transactions.forEach(transaction => {
+                let p = document.createElement('p');
+                p.textContent = `${transaction.type}: $${transaction.amount.toFixed(2)}`;
+                detailsDiv.appendChild(p);
+            });
+        }
+
+        function updateChart() {
+            let expenseData = {
+                labels: ['Income', 'Expenses'],
+                datasets: [{
+                    label: 'Expense Distribution',
+                    data: [walletData.totalIncome, walletData.totalExpense],
+                    backgroundColor: ['green', 'red']
+                }]
+            };
+            let ctx = document.getElementById('expenseChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: expenseData
+            });
+        }
+
+        function addIncome() {
+            let amount = parseFloat(prompt('Enter income amount:'));
+            if (!isNaN(amount)) {
+                walletData.balance += amount;
+                walletData.totalIncome += amount;
+                walletData.transactions.push({type: 'Income', amount});
+                updateWalletDisplay();
+            } else {
+                alert('Invalid input');
+            }
+        }
+
+        function addExpense() {
+            let amount = parseFloat(prompt('Enter expense amount:'));
+            if (!isNaN(amount)) {
+                walletData.balance -= amount;
+                walletData.totalExpense += amount;
+                walletData.transactions.push({type: 'Expense', amount});
+                updateWalletDisplay();
+            } else {
+                alert('Invalid input');
+            }
+        }
+    </script>
+</body>
+</html>
+
